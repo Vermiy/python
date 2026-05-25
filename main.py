@@ -225,11 +225,25 @@ def parse_ai_json_response(response_text: str):
             return None
 
 
-def write_call_result_in_xl(ai_response_text: str):
+def get_phone_from_audio_filename(file_path: Path):
+    stem = file_path.stem
+    if "_incoming" not in stem:
+        return None
+
+    before_incoming = stem.split("_incoming", 1)[0]
+    if not before_incoming:
+        return None
+
+    return before_incoming.rsplit("_", 1)[-1] or None
+
+
+def write_call_result_in_xl(ai_response_text: str, call_audio_path: Path):
     data = parse_ai_json_response(ai_response_text)
     if data is None:
         print("AI response is not valid JSON. Skipping Excel write.")
         return
+
+    phone_from_filename = get_phone_from_audio_filename(call_audio_path)
 
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
@@ -237,7 +251,7 @@ def write_call_result_in_xl(ai_response_text: str):
     row = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         data.get("call_type", "Невідомо"),
-        data.get("phone_number", "Невідомо"),
+        phone_from_filename or data.get("phone_number", "Невідомо"),
         data.get("branch", "Невідомо"),
         data.get("manager", "Невідомо"),
         data.get("greeting", "Невідомо"),
@@ -274,4 +288,4 @@ for segment in segments:
 init_excel();
 ai_response_text = estimate_manager_response(full_text);
 if ai_response_text:
-    write_call_result_in_xl(ai_response_text)
+    write_call_result_in_xl(ai_response_text, audio_path)
